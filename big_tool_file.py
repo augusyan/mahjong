@@ -4,6 +4,7 @@
 import os
 import numpy as np
 import pandas as pd
+import tensorflow as tf
 import matplotlib.pyplot as plt
 from sklearn import preprocessing
 from sklearn import datasets
@@ -73,7 +74,7 @@ def read_file(path):
             chunks.append(chunk)
         except StopIteration:
             loop = False
-            print "Iteration is stopped."
+            print("Iteration is stopped.")
     #df = pd.concat(chunks, ignore_index=True)
     #distrbution = df.describe()
     #print(distrbution)
@@ -133,7 +134,7 @@ def datatxt_normalization(trainData, type='mean'):
 
     if type == 'normal':
         normalized = preprocessing.normalize(norm='l2')
-        trainData = normalized.fit_transform(trainData)
+            trainData = normalized.fit_transform(trainData)
 
     trainData[:, -1] = tmp[:, -1]
     print('---')
@@ -150,23 +151,56 @@ def read_datatxt_processing(filename):
 
 
 # k-fold生成训练集和测试集
-def k_fold_set(input, test_size=0.2):
-    print(input)
-    input_x = input[:,0:-1]
-    input_y = input[:,-1]
-    input = KFold(n_splits=10, shuffle=True, random_state=None)
-    # train_data = np.column_stack(X_train, y_train)
-    # test_data = np.column_stack(X_test, y_test)
-    np.savetxt(train_path, train_data)
-    np.savetxt(test_path, test_data)
+# def k_fold_set(input, test_size=0.2):
+#     print(input)
+#     input_x = input[:,0:-1]
+#     input_y = input[:,-1]
+#     input = KFold(n_splits=10, shuffle=True, random_state=None)
+#     # train_data = np.column_stack(X_train, y_train)
+#     # test_data = np.column_stack(X_test, y_test)
+#     np.savetxt(train_path, train_data)
+#     np.savetxt(test_path, test_data)
 
 
 # 主函数
 
-filename = 'output.txt'
-train_path = 'data200'+'_train.txt'
-test_path = 'data200'+'_test.txt'
-processed_path = 'data200'+'_p.txt'
+# csv格式转换 tfrecord,需要大内存和线程控制
+def csv2tfrecord(filename,output_file):
+    # load .csv file
+    # train_frame = pd.read_csv(filename, header=None, delim_whitespace=True)
+    train_frame = np.loadtxt(filename)
+    # print(train_frame.head())
+    # train_labels_frame = train_frame[-1]
+    # print(train_labels_frame.shape)
+
+    train_values = train_frame[:,0:-1]
+    train_labels_values = train_frame[:,-1].astype(np.int32)
+    train_size = train_values.shape[0]
+    # ------------------create TFRecord file------------------------ #
+    writer = tf.python_io.TFRecordWriter(output_file)
+    for i in range(train_size):
+        image_raw = train_values[i].tostring()
+        example = tf.train.Example(
+            features=tf.train.Features(
+                feature={
+                    "image_raw": tf.train.Feature(bytes_list=tf.train.FloatList(value=[image_raw])),
+                    "label": tf.train.Feature(int64_list=tf.train.Int64List(value=[train_labels_values[i]]))
+                }
+            )
+        )
+        writer.write(record=example.SerializeToString())
+    writer.close()
+
+
+# ------------------PATH------------------ #
+train_record = 'mj_dataset/dataset_v11_mini.tfrecords'
+# train_record = 'mj_dataset/data223_train.tfrecords'
+filename = 'mj_dataset/dataset_v11_mini.txt'
+# filename = 'mj_dataset/output1.txt'
+train_path = 'mj_dataset/data223'+'_train.txt'
+test_path = 'mj_dataset/data223'+'_test.txt'
+processed_path = 'mj_dataset/data223'+'_p.txt'
+# ------------------FUNCITONS------------------ #
 #trainData = np.genfromtxt(filename, delimiter=' ')
 #a = datatxt_normalization(trainData, 'mean')
 #print('| Processing Data |')
@@ -176,8 +210,8 @@ processed_path = 'data200'+'_p.txt'
 #np.savetxt(processed_path, a)
 
 #print('| Analysis Data |')
-
-print(read_file(filename))
+csv2tfrecord(filename,train_record)
+#print(read_file(filename))
 
 
 
