@@ -1,6 +1,6 @@
 # -*-coding:utf-8 -*-
 # __author__='Yan'
-# function: +223 features +regularization
+# function: +223 features +regularization + dropout
 
 from __future__ import division
 from __future__ import print_function
@@ -30,7 +30,7 @@ def add_layer(inputs, n_features, n_labels, n_layer, activation=None):
     # TODO: Return hidden layer
     with tf.name_scope(layer_name):
         with tf.name_scope('weights%d' % n_layer):
-            W = tf.Variable(tf.truncated_normal([n_features, n_labels]/tf.sqrt(float(n_features))),name='weights%d' % n_layer)  # Weight中都是随机变量
+            W = tf.Variable(tf.truncated_normal([n_features, n_labels], stddev=(2.0 / n_features)),name='weights%d' % n_layer)  # Weight中都是随机变量
             tf.summary.histogram(layer_name + "/weights", W)  # 可视化观看变量
         with tf.name_scope('biases%d' % n_layer):
             b = tf.Variable(tf.zeros([n_labels]),name='biases%d' % n_layer)  # biases推荐初始值不为0
@@ -42,7 +42,7 @@ def add_layer(inputs, n_features, n_labels, n_layer, activation=None):
             outputs = h
         elif activation == 'relu':
             outputs = tf.nn.relu(h)
-
+            outputs = tf.nn.dropout(outputs, keep_prob=keep_prob)
         tf.summary.histogram(layer_name + "/outputs", outputs)  # 可视化观看变量
         tf.add_to_collection(tf.GraphKeys.WEIGHTS, W)
     return outputs
@@ -108,10 +108,10 @@ def batch_iter(sourceData, batch_size, num_epochs, shuffle=True):
 starttime = datetime.datetime.now()
 
 # data path
-trainData_tmp = np.loadtxt('data/dataset_v11_mini.txt', delimiter=' ', dtype=np.float16)
+trainData_tmp = np.loadtxt('data/data223_train.txt', delimiter=' ', dtype=np.float16)
 # trainData_tmp = np.loadtxt('data/data223_train.txt', delimiter=' ', dtype=np.float16)
 trainData = trainData_tmp
-testData_tmp = np.loadtxt('data/dataset_v11_mini.txt', delimiter=' ', dtype=np.float16)
+testData_tmp = np.loadtxt('data/data223_test.txt', delimiter=' ', dtype=np.float16)
 testData = testData_tmp
 
 # show the input data
@@ -145,8 +145,6 @@ example_batch, label_batch = tf.train.shuffle_batch(
     min_after_dequeue=mini_after_dequeue
 )
 
-
-
 #batch_size = 4
 #mini_after_dequeue = 100
 #capacity = mini_after_dequeue+3*batch_size
@@ -157,33 +155,34 @@ example_batch, label_batch = tf.train.shuffle_batch(
 # global config
 learning_rate = 0.0001
 beta = 0.001
-num_epochs = 201
-test_epochs = 100
+keep_prob = 0.9
+num_epochs = 101
+# test_epochs = 100
 data_size = len(trainData)
 batch_size = 50
 num_batches_per_epoch = int(data_size / batch_size)
-model_save_name = '20171205_mini_401'
-model_restore_path = "save/20171125_mini02_model_0.ckpt"
+model_save_name = '20171206_v402'
+model_restore_path = "save/20171120_v201_model.ckpt"
 
 # input placeholder
 with tf.name_scope('inputs'):
-    x = tf.placeholder(tf.float32, shape=[None, 23], name='x')
+    x = tf.placeholder(tf.float32, shape=[None, 223], name='x')
     y_ = tf.placeholder(tf.int32, shape=[None], name='y_')
 
 # weights & bias for nn layerscorrect_prediction
-layer1 = add_layer(x, 23, 1000, 1, 'relu')
+layer1 = add_layer(x, 223, 1000, 1, 'relu')
 layer2 = add_layer(layer1, 1000, 1000, 2, 'relu')
 layer3 = add_layer(layer2, 1000, 1000, 3, 'relu')
-output = add_layer(layer3, 1000, 34, 4)
+output = add_layer(layer3, 1000, 35, 4)
 
 # tf.add_to_collection(tf.GraphKeys.WEIGHTS, W_2)
 # tf.add_to_collection(tf.GraphKeys.WEIGHTS, W_3)
-# regularizer = tf.contrib.layers.l2_regularizer(scale=5.0/50000)
 # reg_term = tf.contrib.layers.apply_regularization(regularizer)
 # loss = (tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=y_,logits=z_3)) + reg_term)
 
 # Regularization L2
 L1 = tf.nn.softmax(output)
+
 regularizer = tf.contrib.layers.l2_regularizer(beta)
 reg_term = tf.contrib.layers.apply_regularization(regularizer)
 
@@ -195,7 +194,7 @@ correct_prediction = tf.equal(tf.argmax(L1, 1), tf.cast(y_, tf.int64))
 # correct_prediction = tf.equal(tf.argmax(L1,1), tf.argmax(y_,1))
 
 with tf.name_scope('loss'):
-    accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float32"))
+    accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
     tf.summary.scalar('loss', accuracy)
 # accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
@@ -228,7 +227,7 @@ def train_test_model(train=True, show=False):
                 train_accuracy = accuracy.eval(feed_dict=feed)
                 result = sess.run(merged, feed_dict=feed)  # merged也是需要run的
                 writer.add_summary(result, epoch)  # result是summary类型的，需要放入writer中，i步数（x轴）
-                if epoch % 50 == 0:
+                if epoch % 20 == 0:
                     saver_path = saver.save(sess, 'save/' + model_save_name + '_%d.ckpt' % epoch)
                 print("epoch %04d | training_accuracy %.6f" % (epoch, train_accuracy))
             print('-----Testing-----')
@@ -237,7 +236,7 @@ def train_test_model(train=True, show=False):
             feed = {x: x_data, y_: y_data}
             test_num = x_data.shape[0]
             test_accuracy = accuracy.eval(feed_dict=feed)
-            print("test_number %04d | testing_accuracy %.6f" % (test_num, test_accuracy))
+            print("test_number %04d | testing_accuracy %.9f" % (test_num, test_accuracy))
         print('-+---------------------------+-')
         print("Model saved in file:", saver_path)
 
@@ -251,7 +250,7 @@ def train_test_model(train=True, show=False):
             feed = {x: x_data, y_: y_data}
             test_num = x_data.shape[0]
             test_accuracy = accuracy.eval(feed_dict=feed)
-            print("test_samples %04d | testing_accuracy %.6f" % (test_num, test_accuracy))
+            print("test_samples %04d | testing_accuracy %.9f" % (test_num, test_accuracy))
 
     if show:
         with tf.Session() as sess:
