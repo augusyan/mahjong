@@ -155,14 +155,14 @@ example_batch, label_batch = tf.train.shuffle_batch(
 # global config
 learning_rate = 0.0001
 beta = 0.001
-keep_prob = 0.9
+keep_prob = 0.8
 num_epochs = 101
-# test_epochs = 100
+test_epochs = 100
 data_size = len(trainData)
 batch_size = 50
 num_batches_per_epoch = int(data_size / batch_size)
-model_save_name = '20171206_v402'
-model_restore_path = "save/20171120_v201_model.ckpt"
+model_save_name = '20171207_v401'
+model_restore_path = "save/20171207_v401_300.ckpt"
 
 # input placeholder
 with tf.name_scope('inputs'):
@@ -204,7 +204,7 @@ saver = tf.train.Saver()
 print('---training---')
 
 
-def train_test_model(train=True, show=False):
+def train_test_model(train=True, show=False, continue_trian = False):
     if train:
         with tf.Session() as sess:
             # 合并到Summary中
@@ -257,18 +257,55 @@ def train_test_model(train=True, show=False):
             saver.restore(sess, model_restore_path)
             print('model restore !')
             # data input
-            x_data = np.array(trainData[:, 0:-1])
-            y_data = np.array(trainData[:, -1]).astype(np.int32)  # .astype(np.int64)
-            for step_test in range(100):
+            x_data = np.array(testData[:, 0:-1])
+            y_data = np.array(testData[:, -1]).astype(np.int32)  # .astype(np.int64)
+            for step_test in range(test_epochs):
                 test_data = x_data[step_test]
                 test_label = y_data[step_test]
                 # print(test_label.shape)
-                ret = sess.run(L1, feed_dict={x: test_data.reshape(1, 30)})
+                ret = sess.run(L1, feed_dict={x: test_data.reshape(1, 223)})
                 print('---')
-                print('hyperthesis:%d' % (ret.argmax())+'true Y:%d' % (test_label))
+                print('hyperthesis:%d | ' % (ret.argmax())+'true Y:%d' % (test_label))
+
+    if continue_trian:
+        with tf.Session() as sess:
+            saver.restore(sess, model_restore_path)
+            print('model restore !')
+            merged = tf.summary.merge_all()
+            writer = tf.summary.FileWriter("graph/", sess.graph)
+            sess.run(tf.global_variables_initializer())
+            sess.run(tf.local_variables_initializer())
+            for epoch in range(num_epochs):
+                # print('epoch:', epoch)
+                shuffle_indices = np.random.permutation(np.arange(data_size))
+                shuffled_data = trainData[shuffle_indices]
+                for batch_num in range(num_batches_per_epoch):
+                    start_index = batch_num * batch_size
+                    end_index = min((batch_num + 1) * batch_size, data_size)
+                    data_batch = shuffled_data[start_index:end_index]
+                    x_data = np.array(data_batch[:, 0:-1])
+                    y_data = np.array(data_batch[:, -1]).astype(np.int32)  # .astype(np.int64)
+                    feed = {x: x_data, y_: y_data}
+                    optimizer.run(feed_dict=feed)
+                train_accuracy = accuracy.eval(feed_dict=feed)
+                result = sess.run(merged, feed_dict=feed)  # merged也是需要run的
+                writer.add_summary(result, epoch)  # result是summary类型的，需要放入writer中，i步数（x轴）
+                if epoch % 20 == 0:
+                    saver_path = saver.save(sess, 'save/' + model_save_name + '_continue_%d.ckpt' % epoch)
+                print("epoch %04d | training_accuracy %.6f" % (epoch, train_accuracy))
+            print('-----Testing-----')
+            x_data = np.array(testData[:, 0:-1])
+            y_data = np.array(testData[:, -1]).astype(np.int32)  # .astype(np.int64)
+            feed = {x: x_data, y_: y_data}
+            test_num = x_data.shape[0]
+            test_accuracy = accuracy.eval(feed_dict=feed)
+            print("test_number %04d | testing_accuracy %.9f" % (test_num, test_accuracy))
+        print('-+---------------------------+-')
+        print("Model saved in file:", saver_path)
+
 
 
 if __name__ == '__main__':
-    train_test_model()
+    train_test_model(train=False,show=False,continue_trian=True)
     endtime = datetime.datetime.now()
     print(endtime - starttime)
