@@ -191,9 +191,10 @@ def csv2tfrecord(filename,output_file):
 
 def make_train_test(filename,train_path,test_path):
     data = np.loadtxt(filename).astype(int)
-    tmp = data[0:1459200]
+    # length = int(data.shape[0] * 0.8)
+    tmp = data[0:2240000]
     np.savetxt(train_path, tmp)
-    tmp = data[1459200:1824000]
+    tmp = data[2240000:-1]
     np.savetxt(test_path,tmp)
     print('Making trian and test file done!')
 
@@ -202,10 +203,10 @@ def make_train_test(filename,train_path,test_path):
 # ------------------PATH------------------ #
 # train_record = 'mj_dataset/dataset_v11_mini.tfrecords'
 # train_record = 'mj_dataset/data223_train.tfrecords'
-filename = 'mj_dataset/non_kings.txt'
+filename = 'mj_dataset/non_kings3.txt'
 # filename = 'mj_dataset/output1.txt'
-train_path = 'mj_dataset/non_kings'+'_train.txt'
-test_path = 'mj_dataset/non_kings'+'_test.txt'
+train_path = 'mj_dataset/non_kings'+'_train_3.txt'
+test_path = 'mj_dataset/non_kings'+'_test_3.txt'
 # processed_path = 'mj_dataset/data223'+'_p.txt'
 # ------------------FUNCITONS------------------ #
 #trainData = np.genfromtxt(filename, delimiter=' ')
@@ -219,7 +220,7 @@ test_path = 'mj_dataset/non_kings'+'_test.txt'
 #print('| Analysis Data |')
 # csv2tfrecord(filename,train_record)
 # print(read_file(filename))
-make_train_test(filename,train_path,test_path)
+make_train_test(filename, train_path, test_path)
 
 
 

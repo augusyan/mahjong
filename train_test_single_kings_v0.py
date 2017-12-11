@@ -108,10 +108,10 @@ def batch_iter(sourceData, batch_size, num_epochs, shuffle=True):
 starttime = datetime.datetime.now()
 
 # data path
-trainData_tmp = np.loadtxt('data/data223_train.txt', delimiter=' ', dtype=np.float16)
+trainData_tmp = np.loadtxt('data/kings_train.txt', delimiter=' ', dtype=np.float16)
 # trainData_tmp = np.loadtxt('data/data223_train.txt', delimiter=' ', dtype=np.float16)
 trainData = trainData_tmp
-testData_tmp = np.loadtxt('data/data223_test.txt', delimiter=' ', dtype=np.float16)
+testData_tmp = np.loadtxt('data/kings_test.txt', delimiter=' ', dtype=np.float16)
 testData = testData_tmp
 
 # show the input data
@@ -155,27 +155,28 @@ example_batch, label_batch = tf.train.shuffle_batch(
 # global config
 learning_rate = 0.0001
 beta = 0.001
-keep_prob = 0.8
+keep_prob = 1
 num_epochs = 101
-test_epochs = 100
+test_epochs = 30
 batch_size = 50
+input_features = 206
 
 data_size = len(trainData)
 num_batches_per_epoch = int(data_size / batch_size)
-model_save_name = '20171208_v401_tmp'
-model_restore_path = "save/20171207_v401_300.ckpt"
+model_save_name = '20171211_king_v0_layer2_d10'
+model_restore_path = "save/20171211_king_v0_layer2_d10_100.ckpt"
 
 # input placeholder
 with tf.name_scope('inputs'):
-    x = tf.placeholder(tf.float32, shape=[None, 223], name='x')
+    x = tf.placeholder(tf.float32, shape=[None, input_features], name='x')
     y_ = tf.placeholder(tf.int32, shape=[None], name='y_')
 
 # weights & bias for nn layerscorrect_prediction
-layer1 = add_layer(x, 223, 1000, 1, 'relu')
+layer1 = add_layer(x, input_features, 1000, 1, 'relu')
 layer2 = add_layer(layer1, 1000, 1000, 2, 'relu')
 # layer3 = add_layer(layer2, 1000, 1000, 3, 'relu')
 # output = add_layer(layer3, 1000, 35, 4)
-output = add_layer(layer2, 1000, 35, 3)
+output = add_layer(layer2, 1000, 34, 3)
 
 # tf.add_to_collection(tf.GraphKeys.WEIGHTS, W_2)
 # tf.add_to_collection(tf.GraphKeys.WEIGHTS, W_3)
@@ -206,7 +207,7 @@ saver = tf.train.Saver()
 print('---training---')
 
 
-def train_test_model(train=True, show=False, continue_trian = False):
+def train_test_model(train=True, show=False, continue_train = False):
     if train:
         with tf.Session() as sess:
             # 合并到Summary中
@@ -265,11 +266,13 @@ def train_test_model(train=True, show=False, continue_trian = False):
                 test_data = x_data[step_test]
                 test_label = y_data[step_test]
                 # print(test_label.shape)
-                ret = sess.run(L1, feed_dict={x: test_data.reshape(1, 223)})
+                ret = sess.run(L1, feed_dict={x: test_data.reshape(1, input_features)})
+                print('---')
+                print(ret)
                 print('---')
                 print('hyperthesis:%d | ' % (ret.argmax())+'true Y:%d' % (test_label))
 
-    if continue_trian:
+    if continue_train:
         with tf.Session() as sess:
             saver.restore(sess, model_restore_path)
             print('model restore !')
@@ -308,6 +311,6 @@ def train_test_model(train=True, show=False, continue_trian = False):
 
 
 if __name__ == '__main__':
-    train_test_model()
+    train_test_model(train=False,show=True)
     endtime = datetime.datetime.now()
     print(endtime - starttime)

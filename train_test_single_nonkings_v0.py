@@ -162,7 +162,7 @@ batch_size = 50
 
 data_size = len(trainData)
 num_batches_per_epoch = int(data_size / batch_size)
-model_save_name = '20171208_non_king_v0'
+model_save_name = '20171211_non_king_v0_layer2'
 model_restore_path = "save/20171207_v401_300.ckpt"
 
 # input placeholder
@@ -173,8 +173,8 @@ with tf.name_scope('inputs'):
 # weights & bias for nn layerscorrect_prediction
 layer1 = add_layer(x, 202, 1000, 1, 'relu')
 layer2 = add_layer(layer1, 1000, 1000, 2, 'relu')
-layer3 = add_layer(layer2, 1000, 1000, 3, 'relu')
-output = add_layer(layer3, 1000, 34, 3)
+# layer3 = add_layer(layer2, 1000, 1000, 3, 'relu')
+output = add_layer(layer2, 1000, 34, 3)
 
 # tf.add_to_collection(tf.GraphKeys.WEIGHTS, W_2)
 # tf.add_to_collection(tf.GraphKeys.WEIGHTS, W_3)
