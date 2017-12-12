@@ -18,6 +18,104 @@ import os, json, copy
 import sys
 import write_feature
 
+
+# 模型使用，定义网络层
+def add_layer(inputs, n_features, n_labels, n_layer, activation=None):
+    """
+    Return TensorFlow weights
+    :param n_features: Number of features
+    :param n_labels: Number of labels
+    :return: TensorFlow hidden layer
+    """
+    layer_name = "layer%d" % n_layer
+    regularizer = layers.l2_regularizer(0.001)
+    # TODO: Return hidden layer
+    W = tf.Variable(tf.truncated_normal([n_features, n_labels], stddev=(2.0 / n_features)),name='weights%d' % n_layer)  # Weight中都是随机变量
+    tf.add_to_collection(tf.GraphKeys.WEIGHTS, W)
+    b = tf.Variable(tf.zeros([n_labels]),name='biases%d' % n_layer)  # biases推荐初始值不为0
+    h = tf.add(tf.matmul(inputs, W), b,name='hidden%d' % n_layer)  # inputs*Weight+biases
+    if activation is None:
+        target = h
+    elif activation == 'relu':
+        target = tf.nn.relu(h)
+        target = tf.nn.dropout(target, keep_prob=1.0)
+    return target
+
+
+# 模型选取和训练
+def model_choose(isking, list):
+    # time record
+    starttime = datetime.datetime.now()
+
+    # data path
+    testData_tmp = np.loadtxt('data/kings_test_3.txt', delimiter=' ', dtype=np.float16)
+    testData = testData_tmp
+
+    # global config
+    learning_rate = 0.0001
+    beta = 0.001
+    keep_prob = 1
+    test_epochs = 1
+    if isking:
+        input_features = 206
+        model_restore_path = "save/20171211_king3_v0_continue_100.ckpt"
+
+    else:
+        input_features = 202
+        model_restore_path = "save/20171211_non_king3_v0_layer2_continue_100.ckpt"
+
+    # input placeholder
+    x = tf.placeholder(tf.float32, shape=[None, input_features], name='x')
+    y_ = tf.placeholder(tf.int32, shape=[None], name='y_')
+
+    # weights & bias for nn layerscorrect_prediction
+    layer1 = add_layer(x, input_features, 1000, 1, 'relu')
+    layer2 = add_layer(layer1, 1000, 1000, 2, 'relu')
+    # layer3 = add_layer(layer2, 1000, 1000, 3, 'relu')
+    # output = add_layer(layer3, 1000, 35, 4)
+    output = add_layer(layer2, 1000, 34, 3)
+
+    # Regularization L2
+    L1 = tf.nn.softmax(output)
+
+    regularizer = tf.contrib.layers.l2_regularizer(beta)
+    reg_term = tf.contrib.layers.apply_regularization(regularizer)
+
+    # optimizer paramaters
+    cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=y_, logits=output) + reg_term
+    optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cross_entropy)
+    correct_prediction = tf.equal(tf.argmax(L1, 1), tf.cast(y_, tf.int64))
+    accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
+
+    # save model
+    saver = tf.train.Saver()
+
+    # model running
+    print('---training---')
+    with tf.Session() as sess:
+        saver.restore(sess, model_restore_path)
+        print('model restore !')
+        # data input
+        x_data = np.array(testData[:, 0:-1])
+        y_data = np.array(testData[:, -1]).astype(np.int32)  # .astype(np.int64)
+        for step_test in range(test_epochs):
+            sign = 1
+            test_data = x_data[step_test]
+            test_label = y_data[step_test]
+            # print(test_label.shape)
+            ret = sess.run(L1, feed_dict={x: test_data.reshape(1, input_features)})
+            best = ret.argmax()
+            while sign:
+                if ret.argmax() not in list:
+                    ret[0][ret.argmax()] = 0
+                else:
+                    sign = 0
+            print('---')
+            print(ret[0][ret.argmax()])
+            print('---')
+            print('our decision:%d | ' % (ret.argmax()) + 'best decision:%d | ' % (best) + 'Y:' % (test_label))
+
+
 dict = {}
 
 inits = input("请输入初始手牌,每张牌用，隔开:\n")
