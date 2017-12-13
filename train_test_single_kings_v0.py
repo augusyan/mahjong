@@ -1,6 +1,6 @@
 # -*-coding:utf-8 -*-
 # __author__='Yan'
-# function: processing kings model
+# function: processing kings model,features = 207
 
 from __future__ import division
 from __future__ import print_function

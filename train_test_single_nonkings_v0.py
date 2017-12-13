@@ -10,7 +10,7 @@ from tensorflow.contrib import layers
 import numpy as np
 import os
 import datetime
-from sklearn import cross_validation
+
 
 # choose gpu
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -108,10 +108,10 @@ def batch_iter(sourceData, batch_size, num_epochs, shuffle=True):
 starttime = datetime.datetime.now()
 
 # data path
-trainData_tmp = np.loadtxt('data/non_kings_train.txt', delimiter=' ', dtype=np.float16)
+trainData_tmp = np.loadtxt('data/non_kings_train_3.txt', delimiter=' ', dtype=np.float16)
 # trainData_tmp = np.loadtxt('data/data223_train.txt', delimiter=' ', dtype=np.float16)
 trainData = trainData_tmp
-testData_tmp = np.loadtxt('data/non_kings_test.txt', delimiter=' ', dtype=np.float16)
+testData_tmp = np.loadtxt('data/non_kings_test_3.txt', delimiter=' ', dtype=np.float16)
 testData = testData_tmp
 
 # show the input data
@@ -155,15 +155,15 @@ example_batch, label_batch = tf.train.shuffle_batch(
 # global config
 learning_rate = 0.0001
 beta = 0.001
-keep_prob = 0.8
-num_epochs = 51
+keep_prob = 1.0
+num_epochs = 101
 test_epochs = 100
 batch_size = 50
 
 data_size = len(trainData)
 num_batches_per_epoch = int(data_size / batch_size)
-model_save_name = '20171211_non_king_v0_layer2'
-model_restore_path = "save/20171207_v401_300.ckpt"
+model_save_name = '20171211_non_king3_v0_layer2'
+model_restore_path = "save/20171211_non_king2_v0_layer2_continue_100.ckpt"
 
 # input placeholder
 with tf.name_scope('inputs'):
@@ -305,8 +305,7 @@ def train_test_model(train=True, show=False, continue_trian = False):
         print("Model saved in file:", saver_path)
 
 
-
 if __name__ == '__main__':
-    train_test_model()
+    train_test_model(train=False,continue_trian=True)
     endtime = datetime.datetime.now()
     print(endtime - starttime)
