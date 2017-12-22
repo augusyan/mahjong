@@ -1,6 +1,6 @@
 # -*-coding:utf-8 -*-
 # __author__='Yan'
-# function: processing non_kings model,features=203
+# function: processing op_nonkings model,features=210
 
 from __future__ import division
 from __future__ import print_function
@@ -159,6 +159,8 @@ keep_prob = 1.0
 num_epochs = 101
 test_epochs = 100
 batch_size = 50
+input_features = 209
+output_features = 8
 
 data_size = len(trainData)
 num_batches_per_epoch = int(data_size / batch_size)
@@ -167,14 +169,14 @@ model_restore_path = "save/20171211_non_king2_v0_layer2_continue_100.ckpt"
 
 # input placeholder
 with tf.name_scope('inputs'):
-    x = tf.placeholder(tf.float32, shape=[None, 202], name='x')
+    x = tf.placeholder(tf.float32, shape=[None, input_features], name='x')
     y_ = tf.placeholder(tf.int32, shape=[None], name='y_')
 
 # weights & bias for nn layerscorrect_prediction
-layer1 = add_layer(x, 202, 1000, 1, 'relu')
+layer1 = add_layer(x, input_features, 1000, 1, 'relu')
 layer2 = add_layer(layer1, 1000, 1000, 2, 'relu')
 # layer3 = add_layer(layer2, 1000, 1000, 3, 'relu')
-output = add_layer(layer2, 1000, 34, 3)
+output = add_layer(layer2, 1000, output_features, 3)
 
 # tf.add_to_collection(tf.GraphKeys.WEIGHTS, W_2)
 # tf.add_to_collection(tf.GraphKeys.WEIGHTS, W_3)

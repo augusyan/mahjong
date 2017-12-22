@@ -1,6 +1,6 @@
 # -*-coding:utf-8 -*-
 # __author__='Yan'
-# function: processing non_kings model,features=203
+# function: processing op kings model,features = 213  20171221
 
 from __future__ import division
 from __future__ import print_function
@@ -10,7 +10,7 @@ from tensorflow.contrib import layers
 import numpy as np
 import os
 import datetime
-
+from sklearn import cross_validation
 
 # choose gpu
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -78,40 +78,15 @@ def batch_iter(sourceData, batch_size, num_epochs, shuffle=True):
             yield shuffled_data[start_index:end_index]
 
 
-"""def bn(x, is_training):
-    x_shape = x.get_shape()
-    params_shape = x_shape[-1:]
-
-    axis = list(range(len(x_shape) - 1))
-
-    beta = _get_variable('beta', params_shape, initializer=tf.zeros_initializer())
-    gamma = _get_variable('gamma', params_shape, initializer=tf.ones_initializer())
-
-    moving_mean = _get_variable('moving_mean', params_shape, initializer=tf.zeros_initializer(), trainable=False)
-    moving_variance = _get_variable('moving_variance', params_shape, initializer=tf.ones_initializer(), trainable=False)
-
-    # These ops will only be preformed when training.
-    mean, variance = tf.nn.moments(x, axis)
-    update_moving_mean = moving_averages.assign_moving_average(moving_mean, mean, BN_DECAY)
-    update_moving_variance = moving_averages.assign_moving_average(moving_variance, variance, BN_DECAY)
-    tf.add_to_collection(UPDATE_OPS_COLLECTION, update_moving_mean)
-    tf.add_to_collection(UPDATE_OPS_COLLECTION, update_moving_variance)
-
-    mean, variance = control_flow_ops.cond(
-        is_training, lambda: (mean, variance),
-        lambda: (moving_mean, moving_variance))
-
-    return tf.nn.batch_normalization(x, mean, variance, beta, gamma, BN_EPSILON)
-"""
 
 # time record
 starttime = datetime.datetime.now()
 
 # data path
-trainData_tmp = np.loadtxt('data/non_kings_train_3.txt', delimiter=' ', dtype=np.float16)
+trainData_tmp = np.loadtxt('data/op_kings_train.txt', delimiter=' ', dtype=np.float16)
 # trainData_tmp = np.loadtxt('data/data223_train.txt', delimiter=' ', dtype=np.float16)
 trainData = trainData_tmp
-testData_tmp = np.loadtxt('data/non_kings_test_3.txt', delimiter=' ', dtype=np.float16)
+testData_tmp = np.loadtxt('data/op_kings_test.txt', delimiter=' ', dtype=np.float16)
 testData = testData_tmp
 
 # show the input data
@@ -155,26 +130,29 @@ example_batch, label_batch = tf.train.shuffle_batch(
 # global config
 learning_rate = 0.0001
 beta = 0.001
-keep_prob = 1.0
+keep_prob = 1
 num_epochs = 101
-test_epochs = 100
+test_epochs = 30
 batch_size = 50
+input_features = 212
+output_features = 8
 
 data_size = len(trainData)
 num_batches_per_epoch = int(data_size / batch_size)
-model_save_name = '20171211_non_king3_v0_layer2'
-model_restore_path = "save/20171211_non_king2_v0_layer2_continue_100.ckpt"
+model_save_name = '20171221_op_king_v0_layer2_d10'
+model_restore_path = "save/20171211_king_v0_layer2_d10_100.ckpt"
 
 # input placeholder
 with tf.name_scope('inputs'):
-    x = tf.placeholder(tf.float32, shape=[None, 202], name='x')
+    x = tf.placeholder(tf.float32, shape=[None, input_features], name='x')
     y_ = tf.placeholder(tf.int32, shape=[None], name='y_')
 
 # weights & bias for nn layerscorrect_prediction
-layer1 = add_layer(x, 202, 1000, 1, 'relu')
+layer1 = add_layer(x, input_features, 1000, 1, 'relu')
 layer2 = add_layer(layer1, 1000, 1000, 2, 'relu')
 # layer3 = add_layer(layer2, 1000, 1000, 3, 'relu')
-output = add_layer(layer2, 1000, 34, 3)
+# output = add_layer(layer3, 1000, 35, 4)
+output = add_layer(layer2, 1000, output_features, 3)
 
 # tf.add_to_collection(tf.GraphKeys.WEIGHTS, W_2)
 # tf.add_to_collection(tf.GraphKeys.WEIGHTS, W_3)
@@ -189,7 +167,6 @@ reg_term = tf.contrib.layers.apply_regularization(regularizer)
 
 # optimizer paramaters
 cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=y_, logits=output) + reg_term
-loss_show = tf.reduce_mean(cross_entropy, name="loss_show")
 with tf.name_scope('train'):
     optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cross_entropy)
 correct_prediction = tf.equal(tf.argmax(L1, 1), tf.cast(y_, tf.int64))
@@ -206,7 +183,7 @@ saver = tf.train.Saver()
 print('---training---')
 
 
-def train_test_model(train=True, show=False, continue_trian = False):
+def train_test_model(train=True, show=False, continue_train = False):
     if train:
         with tf.Session() as sess:
             # 合并到Summary中
@@ -229,16 +206,16 @@ def train_test_model(train=True, show=False, continue_trian = False):
                 train_accuracy = accuracy.eval(feed_dict=feed)
                 result = sess.run(merged, feed_dict=feed)  # merged也是需要run的
                 writer.add_summary(result, epoch)  # result是summary类型的，需要放入writer中，i步数（x轴）
-                if epoch % 10 == 0:
+                if epoch % 20 == 0:
                     saver_path = saver.save(sess, 'save/' + model_save_name + '_%d.ckpt' % epoch)
-                print("epoch %04d | training_accuracy %g" % (epoch, train_accuracy))
+                print("epoch %04d | training_accuracy %.6f" % (epoch, train_accuracy))
             print('-----Testing-----')
             x_data = np.array(testData[:, 0:-1])
             y_data = np.array(testData[:, -1]).astype(np.int32)  # .astype(np.int64)
             feed = {x: x_data, y_: y_data}
             test_num = x_data.shape[0]
             test_accuracy = accuracy.eval(feed_dict=feed)
-            print("test_number %04d | testing_accuracy %g" % (test_num, test_accuracy))
+            print("test_number %04d | testing_accuracy %.9f" % (test_num, test_accuracy))
         print('-+---------------------------+-')
         print("Model saved in file:", saver_path)
 
@@ -265,11 +242,13 @@ def train_test_model(train=True, show=False, continue_trian = False):
                 test_data = x_data[step_test]
                 test_label = y_data[step_test]
                 # print(test_label.shape)
-                ret = sess.run(L1, feed_dict={x: test_data.reshape(1, 223)})
+                ret = sess.run(L1, feed_dict={x: test_data.reshape(1, input_features)})
+                print('---')
+                print(ret)
                 print('---')
                 print('hyperthesis:%d | ' % (ret.argmax())+'true Y:%d' % (test_label))
 
-    if continue_trian:
+    if continue_train:
         with tf.Session() as sess:
             saver.restore(sess, model_restore_path)
             print('model restore !')
@@ -306,7 +285,8 @@ def train_test_model(train=True, show=False, continue_trian = False):
         print("Model saved in file:", saver_path)
 
 
+
 if __name__ == '__main__':
-    train_test_model(train=False,continue_trian=True)
+    train_test_model(train=False,show=True)
     endtime = datetime.datetime.now()
     print(endtime - starttime)

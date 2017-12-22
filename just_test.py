@@ -1,6 +1,6 @@
 # -*-coding:utf-8 -*-
 # __author__='Yan'
-# function: processing kings model
+# function: for test single model +reasonable output decision +continue training
 
 from __future__ import division
 from __future__ import print_function
@@ -10,7 +10,7 @@ from tensorflow.contrib import layers
 import numpy as np
 import os
 import datetime
-from sklearn import cross_validation
+
 
 # choose gpu
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -108,10 +108,10 @@ def batch_iter(sourceData, batch_size, num_epochs, shuffle=True):
 starttime = datetime.datetime.now()
 
 # data path
-trainData_tmp = np.loadtxt('data/kings_train.txt', delimiter=' ', dtype=np.float16)
+trainData_tmp = np.loadtxt('data/kings_train_3.txt', delimiter=' ', dtype=np.float16)
 # trainData_tmp = np.loadtxt('data/data223_train.txt', delimiter=' ', dtype=np.float16)
 trainData = trainData_tmp
-testData_tmp = np.loadtxt('data/kings_test.txt', delimiter=' ', dtype=np.float16)
+testData_tmp = np.loadtxt('data/kings_test_3.txt', delimiter=' ', dtype=np.float16)
 testData = testData_tmp
 
 # show the input data
@@ -163,8 +163,8 @@ input_features = 206
 
 data_size = len(trainData)
 num_batches_per_epoch = int(data_size / batch_size)
-model_save_name = '20171211_king_v0_layer2_d10'
-model_restore_path = "save/20171211_king_v0_layer2_d10_100.ckpt"
+model_save_name = '20171211_king3_v0'
+model_restore_path = "save/20171211_king2_v0_continue_50.ckpt"
 
 # input placeholder
 with tf.name_scope('inputs'):
@@ -230,7 +230,7 @@ def train_test_model(train=True, show=False, continue_train = False):
                 train_accuracy = accuracy.eval(feed_dict=feed)
                 result = sess.run(merged, feed_dict=feed)  # merged也是需要run的
                 writer.add_summary(result, epoch)  # result是summary类型的，需要放入writer中，i步数（x轴）
-                if epoch % 20 == 0:
+                if epoch % 50 == 0:
                     saver_path = saver.save(sess, 'save/' + model_save_name + '_%d.ckpt' % epoch)
                 print("epoch %04d | training_accuracy %.6f" % (epoch, train_accuracy))
             print('-----Testing-----')
@@ -285,8 +285,6 @@ def train_test_model(train=True, show=False, continue_train = False):
             print('model restore !')
             merged = tf.summary.merge_all()
             writer = tf.summary.FileWriter("graph/", sess.graph)
-            sess.run(tf.global_variables_initializer())
-            sess.run(tf.local_variables_initializer())
             for epoch in range(num_epochs):
                 # print('epoch:', epoch)
                 shuffle_indices = np.random.permutation(np.arange(data_size))
@@ -302,7 +300,7 @@ def train_test_model(train=True, show=False, continue_train = False):
                 train_accuracy = accuracy.eval(feed_dict=feed)
                 result = sess.run(merged, feed_dict=feed)  # merged也是需要run的
                 writer.add_summary(result, epoch)  # result是summary类型的，需要放入writer中，i步数（x轴）
-                if epoch % 20 == 0:
+                if epoch % 50 == 0:
                     saver_path = saver.save(sess, 'save/' + model_save_name + '_continue_%d.ckpt' % epoch)
                 print("epoch %04d | training_accuracy %.6f" % (epoch, train_accuracy))
             print('-----Testing-----')
