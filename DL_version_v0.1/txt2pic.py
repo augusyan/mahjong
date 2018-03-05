@@ -107,14 +107,67 @@ def add_row(path, output_path):
     np.savetxt(output_path, tmp_data)
 
 
-def mix_array(path, output_path):
+def array_detail(path, output_path):
     """
-    对array增加行或列
+    计算array的行列,统计文件
     :param: path: Where U put data in the dir
     :param: output_path: Where U save data in the dir
     :return: None
     """
-    
+    cwd = os.getcwd()
+    NUM_FLIES = 0  # 计数器
+    FILENAMES = []  # 文件名
+    NUM_SAMPLES = []   # 样本数
+    NUM_FEATURES = []    # 特征数
+    classes = os.listdir(cwd + '/' + path)  # label的文件列表
+    for name in classes:
+        class_path = cwd + '/' + path + '/' + name + "/"
+        # print(class_path)
+        if os.path.isdir(class_path):
+            for datafile in os.listdir(class_path):
+                if os.path.splitext(datafile)[1] == '.txt':
+                    NUM_FLIES = NUM_FLIES + 1
+                    print(class_path+datafile)
+                    tmp = np.loadtxt(class_path+datafile)
+                    FILENAMES.append(datafile)
+                    NUM_SAMPLES.append(len(tmp))
+                    NUM_FEATURES.append(len(tmp[0]))
+                    # tmp_t = np.array(FILENAMES+NUM_SAMPLES+NUM_FEATURES)
+    tmp_0 = np.array(FILENAMES)
+    tmp_1 = np.array(NUM_SAMPLES)
+    tmp_2 = np.array(NUM_FEATURES)
+    tmp_0 = tmp_0.reshape(-1, 1)
+    tmp_1 = tmp_1.reshape(-1, 1)
+    tmp_2 = tmp_2.reshape(-1, 1)
+    tmp_t = np.concatenate((tmp_0, tmp_1,tmp_2), axis=1)
+    np.savetxt(output_path,tmp_t)
+
+
+def concat_data(input_dir,output):
+    """
+    对于数组形式的数据进行拼接
+    :param input1: 操作文件的位置
+    :param output: 输出地址
+    :return:
+    """
+    cwd = os.getcwd()   # 获取代码所在位置
+    data_path = cwd + '/' + input_dir   # 获取数据集的绝对路径
+    tmp = np.loadtxt(output)
+    for datafile in os.listdir(data_path):
+        datafile_t = data_path + '/' + datafile
+        tmp_in = np.loadtxt(datafile_t)
+        print(datafile_t)
+        if os.path.splitext(datafile)[1] == '.txt':
+            if len(tmp) == 0:
+                tmp = np.loadtxt(datafile_t)
+            elif len(tmp_in[0]) == len(tmp[0]):
+                tmp = np.concatenate((tmp, tmp_in), axis=0)
+            else:
+                print('Features are NOT SAME!')
+    np.savetxt(output, tmp, fmt='%d')
+
+
+
 
 def shuffle(path):
     """
@@ -128,7 +181,7 @@ def shuffle(path):
 def process_line(line):
     """
     根据文件名生成一个队列 
-    :param filename: Where U put data in the dir
+    :param: filename Where U put data in the dir
     :return: img, label
     """
     tmp = [int(val) for val in line.strip().split(',')]
@@ -158,9 +211,17 @@ def generate_arrays_from_file(path, batch_size):
     f.close()
 
 
-filename = 'small_train.txt'
-out_file = 'small_train_18.txt'
-# slide_array(filename,out_file)
-add_row(filename,out_file)
-read_file(out_file)
-
+# filename = 'small_train.txt'
+# out_file = 'small_train_18.txt'
+# # slide_array(filename,out_file)
+# add_row(filename,out_file)
+# read_file(out_file)
+filename = 'mj_data/ZHIYI_v2'
+# filename = '/home/tribody/My_RMTTF/My_work_Z0/mj_data/ZHIYI_v2/non_king/'
+outfile = 'non_king.txt'
+# read_file(filename)
+# file1 = filename + 'non_kings_CLEAN_QI_DUI.txt'
+# file2 = filename + 'non_kings_CLEAN_PENG_PENG.txt'
+concat_data('mj_data/ZHIYI_v2/non_king',outfile)
+# tt = np.loadtxt(outfile).astype(np.float32)
+# print(tt)
