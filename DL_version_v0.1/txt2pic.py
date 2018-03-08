@@ -18,6 +18,7 @@ from sklearn import preprocessing
 from sklearn import datasets
 from sklearn.model_selection import KFold
 from sklearn import svm
+from sklearn.model_selection import ShuffleSplit
 
 # global setting
 pd.set_option('display.max_columns', None)
@@ -84,7 +85,7 @@ def slide_array(path, output_path):
     :return: None
     """
     tmp = np.loadtxt(path)
-    tmp = tmp[0:90000,:]
+    tmp = tmp[0:100000, :]
     np.savetxt(output_path, tmp)
 
 
@@ -95,16 +96,15 @@ def add_row(path, output_path):
     :param: output_path: Where U save data in the dir
     :return: None
     """
-
     tmp = np.loadtxt(path)
-    tmp_data = tmp[:,0:-1]
-    tmp_label = tmp[:,-1]
-    col = np.array([0]*len(tmp))
+    # tmp_data = tmp[:, 0:-1]
+    # tmp_label = tmp[:, -1]
+    col = np.array([0] * len(tmp))
     print(np.shape(col))
-    for i in range(28):
-        tmp_data = np.column_stack((tmp_data,col))
-    tmp_data = np.column_stack((tmp_data, tmp_label))
-    np.savetxt(output_path, tmp_data)
+    for i in range(32):
+        tmp = np.column_stack((tmp, col))
+    # tmp_data = np.column_stack((tmp_data, tmp_label))
+    np.savetxt(output_path, tmp,fmt='%d')
 
 
 def array_detail(path, output_path):
@@ -117,8 +117,8 @@ def array_detail(path, output_path):
     cwd = os.getcwd()
     NUM_FLIES = 0  # 计数器
     FILENAMES = []  # 文件名
-    NUM_SAMPLES = []   # 样本数
-    NUM_FEATURES = []    # 特征数
+    NUM_SAMPLES = []  # 样本数
+    NUM_FEATURES = []  # 特征数
     classes = os.listdir(cwd + '/' + path)  # label的文件列表
     for name in classes:
         class_path = cwd + '/' + path + '/' + name + "/"
@@ -127,8 +127,8 @@ def array_detail(path, output_path):
             for datafile in os.listdir(class_path):
                 if os.path.splitext(datafile)[1] == '.txt':
                     NUM_FLIES = NUM_FLIES + 1
-                    print(class_path+datafile)
-                    tmp = np.loadtxt(class_path+datafile)
+                    print(class_path + datafile)
+                    tmp = np.loadtxt(class_path + datafile)
                     FILENAMES.append(datafile)
                     NUM_SAMPLES.append(len(tmp))
                     NUM_FEATURES.append(len(tmp[0]))
@@ -139,34 +139,41 @@ def array_detail(path, output_path):
     tmp_0 = tmp_0.reshape(-1, 1)
     tmp_1 = tmp_1.reshape(-1, 1)
     tmp_2 = tmp_2.reshape(-1, 1)
-    tmp_t = np.concatenate((tmp_0, tmp_1,tmp_2), axis=1)
-    np.savetxt(output_path,tmp_t)
+    tmp_t = np.concatenate((tmp_0, tmp_1, tmp_2), axis=1)
+    np.savetxt(output_path, tmp_t)
 
 
-def concat_data(input_dir,output):
+def concat_data(input_dir, output):
     """
     对于数组形式的数据进行拼接
     :param input1: 操作文件的位置
     :param output: 输出地址
     :return:
     """
-    cwd = os.getcwd()   # 获取代码所在位置
-    data_path = cwd + '/' + input_dir   # 获取数据集的绝对路径
-    tmp = np.loadtxt(output)
+    cwd = os.getcwd()  # 获取代码所在位置
+    data_path = cwd + '/' + input_dir  # 获取数据集的绝对路径
+    tmp = np.loadtxt(output)  # 数组变量
     for datafile in os.listdir(data_path):
+        # 对于文件夹下的每一个数据集，操作
         datafile_t = data_path + '/' + datafile
         tmp_in = np.loadtxt(datafile_t)
         print(datafile_t)
         if os.path.splitext(datafile)[1] == '.txt':
+            # 判断是否为txt数据集
             if len(tmp) == 0:
+                # 判定输出的数据集是否为空
                 tmp = np.loadtxt(datafile_t)
+                seed = int(len(tmp)/2)
+                tmp = tmp[seed:, :]
             elif len(tmp_in[0]) == len(tmp[0]):
+                # 保证features相等
+                seed = int(len(tmp_in) / 2)
+                tmp_in = tmp_in[seed:, :]
                 tmp = np.concatenate((tmp, tmp_in), axis=0)
             else:
                 print('Features are NOT SAME!')
+    print('OUTPUT:' + output)
     np.savetxt(output, tmp, fmt='%d')
-
-
 
 
 def shuffle(path):
@@ -175,7 +182,28 @@ def shuffle(path):
     :param path: Where U put data in the dir
     :return:
     """
-    pass
+    X = np.loadtxt(path)
+    y = X[:, -1].astype(np.int)
+    X = X[:, :-1]
+    rs = ShuffleSplit(n_splits=1, test_size=.25, random_state=0)
+    rs.get_n_splits(X)
+    # print(rs)
+    for train_index, test_index in rs.split(X, y):
+        # print("Train Index:", train_index, ",Test Index:", test_index)
+        X_train, X_test = X[train_index], X[test_index]
+        y_train, y_test = y[train_index], y[test_index]
+        # print(X_train,X_test,y_train,y_test)
+    print("==============================")
+    print("Making dataset")
+    # rs = ShuffleSplit(n_splits=3, train_size=.5, test_size=.25, random_state=0)
+    np.savetxt('X_train_' + path, X_train, fmt='%d')
+    np.savetxt('Y_train_' + path, y_train, fmt='%d')
+    np.savetxt('X_test_' + path, X_test, fmt='%d')
+    np.savetxt('Y_test_' + path, y_test, fmt='%d')
+    # return X_train, X_test, y_train, y_test
+    print("==============================")
+    print('FINISHED !')
+
 
 
 def process_line(line):
@@ -214,14 +242,15 @@ def generate_arrays_from_file(path, batch_size):
 # filename = 'small_train.txt'
 # out_file = 'small_train_18.txt'
 # # slide_array(filename,out_file)
-# add_row(filename,out_file)
 # read_file(out_file)
-filename = 'mj_data/ZHIYI_v2'
+# filename = 'mj_data/ZHIYI_v2/non_king'
 # filename = '/home/tribody/My_RMTTF/My_work_Z0/mj_data/ZHIYI_v2/non_king/'
-outfile = 'non_king.txt'
-# read_file(filename)
-# file1 = filename + 'non_kings_CLEAN_QI_DUI.txt'
-# file2 = filename + 'non_kings_CLEAN_PENG_PENG.txt'
-concat_data('mj_data/ZHIYI_v2/non_king',outfile)
+# outfile = 'tt0.txt'
+outfile = 'mj_data/non_king_processed/X_train_non_king_2.txt'
+outfile_0 = 'mj_data/non_king_processed/X_train_non_king_2_pic.txt'
+add_row(outfile,outfile_0)
+# concat_data(filename,outfile)
 # tt = np.loadtxt(outfile).astype(np.float32)
-# print(tt)
+# shuffle(outfile)
+# read_file(outfile)
+# slide_array(outfile, '1_' + outfile)
