@@ -22,6 +22,7 @@ from keras.layers.merge import Add
 from keras.layers.normalization import BatchNormalization
 from keras.regularizers import l2
 from keras.optimizers import Adam
+from keras.models import load_model
 from keras import regularizers
 from keras.models import Sequential
 
@@ -65,7 +66,7 @@ class LossHistory(keras.callbacks.Callback):
         plt.xlabel(loss_type)
         plt.ylabel('acc-loss')
         plt.legend(loc="upper right")
-        plt.savefig('loss/loss_sysv2_res34.png')
+        plt.savefig('loss/loss_sysv2_res50.png')
         plt.show()
 
 
@@ -94,17 +95,25 @@ def Conv_Block(inpt, nb_filter, kernel_size, strides=(1, 1), with_conv_shortcut=
         return x
 
 
+def model_test(model_path,X):
+    # 载入模型
+    model = load_model(model_path)   # 载入模型
+    print('Model Restore!')
+    print(model.predict_classes(X, batch_size=1, verbose=0))
+
 # time record
 starttime = datetime.datetime.now()
 
 # global define
-batch = 50  # 批次大小
+batch = 64  # 批次大小
 input_features = 361  # 数据的维数
 output_features = 34  # 输出类别
 units = 1024  # fc神经元数
-num_epoch = 10  # 训练轮数
-model_save_path = 'model/sys_res34.h5'  # 模型保存地址
-model_pic = 'model/sys_res34.png'  # 绘图保存地址
+num_epoch = 100  # 训练轮数
+model_save_path = 'model/sys_res50.h5'  # 模型保存地址
+model_pic = 'model/sys_res50.png'  # 绘图保存地址
+res_block = 7   # 残差块
+log = './log/sys_res50.log'  #log 地址
 
 # data path
 x_train = np.loadtxt('mj_data/non_king_processed/X_train_non_king_1_pic.txt', delimiter=' ', dtype=np.float16)
@@ -215,7 +224,7 @@ x = Conv2D(filters=256, kernel_size=5, padding="same",
 x = BatchNormalization(axis=1, name="input_batchnorm")(x)
 x = Activation("relu", name="input_relu")(x)
 
-for i in range(3):
+for i in range(res_block):
     x = _build_residual_block(x, i + 1)
 res_out = x
 
@@ -246,7 +255,7 @@ print('Training ------------')
 hist_log = model.fit(x_train, y_train, batch_size=batch, epochs=num_epoch, validation_data=(x_test, y_test),
                      callbacks=[history])
 print('Saving Log -------------')
-with open('0002.txt', 'w') as f:
+with open(log, 'w') as f:
     f.write(str(hist_log.history))
 print('\nTesting ------------')
 loss, accuracy = model.evaluate(x_test, y_test)

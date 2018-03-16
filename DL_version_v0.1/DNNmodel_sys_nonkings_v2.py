@@ -12,6 +12,7 @@
 根据层数不同命名,规则如下
 e10--epoch=10,c1--cov=1,l2r--regularizers=l2,
 d2--dense=2,u1200--units=1200,con--continue train
+dp5--dropout=0.5
 """
 from __future__ import division
 from __future__ import print_function
@@ -67,7 +68,7 @@ class LossHistory(keras.callbacks.Callback):
         plt.xlabel(loss_type)
         plt.ylabel('acc-loss')
         plt.legend(loc="upper right")
-        plt.savefig('loss_sysv2_u1200e10d3l2r_con1.png')
+        plt.savefig('loss_sysv2_u1200e100d3dp5.png')  # loss-acc图保存
         plt.show()
 
 
@@ -79,16 +80,17 @@ batch = 50  # 批次大小
 input_features = 329  # 数据的维数
 output_features = 34  # 输出类别
 units = 1200  # fc神经元数
-num_epoch = 10  # 训练轮数
-model_save_path = 'model/sysv2_u1200e10d3l2r_con1.h5'  # 模型保存地址
-model_restore = 'model/sysv2_u1200e10d3l2r.h5'
-model_pic = 'model/sysv2_u1200e10d3l2r_con1.png'  # 绘图保存地址
+num_epoch = 100  # 训练轮数
+model_save_path = 'model/sysv2_u1200e100d3dp5.h5'  # 模型保存地址
+# model_restore = 'model/sysv2_u1200e10d3l2r.h5' # 模型调用地址
+model_pic = 'model/sysv2_u1200e100d3dp5.png'  # 模型图保存地址
+log = './log/sysv2_u1200e100d3dp5.log'
 
 # data path
-x_train = np.loadtxt('mj_data/non_king_processed/X_train_non_king_2.txt', delimiter=' ', dtype=np.float16)
-x_test = np.loadtxt('mj_data/non_king_processed/X_test_non_king_2.txt', delimiter=' ', dtype=np.int32)
-y_train = np.loadtxt('mj_data/non_king_processed/Y_train_non_king_2.txt', delimiter=' ', dtype=np.float16)
-y_test = np.loadtxt('mj_data/non_king_processed/Y_test_non_king_2.txt', delimiter=' ', dtype=np.int32)
+x_train = np.loadtxt('mj_data/non_king_processed/X_train_non_king_1.txt', delimiter=' ', dtype=np.float16)
+x_test = np.loadtxt('mj_data/non_king_processed/X_test_non_king_1.txt', delimiter=' ', dtype=np.int32)
+y_train = np.loadtxt('mj_data/non_king_processed/Y_train_non_king_1.txt', delimiter=' ', dtype=np.float16)
+y_test = np.loadtxt('mj_data/non_king_processed/Y_test_non_king_1.txt', delimiter=' ', dtype=np.int32)
 
 y_train = np_utils.to_categorical(y_train, num_classes=34)
 y_test = np_utils.to_categorical(y_test, num_classes=34)
@@ -97,13 +99,13 @@ y_test = np_utils.to_categorical(y_test, num_classes=34)
 model = Sequential()
 model.add(Dense(units, input_dim=input_features, activation='relu'))
 model.add(Dense(units, activation='relu'))
-# model.add(Dropout(0.1))
+model.add(Dropout(0.5))
 model.add(Dense(units, activation='relu'))
-# model.add(Dropout(0.1))
-# model.add(Dense(units, activation='relu'))
-model.add(Dense(output_features))
-model.add(Dense(output_features, input_dim=output_features, kernel_regularizer=regularizers.l2(0.001),
-                activity_regularizer=regularizers.l1(0.001)))
+model.add(Dropout(0.5))
+# model.add(Dense(output_features))
+model.add(Dense(output_features, input_dim=output_features))
+# model.add(Dense(output_features, input_dim=output_features, kernel_regularizer=regularizers.l2(0.001),
+#                 activity_regularizer=regularizers.l1(0.001)))
 model.add(Activation('softmax'))
 
 adam = Adam(lr=1e-4)
@@ -118,26 +120,28 @@ history = LossHistory()
 plot_model(model, to_file=model_pic)
 
 # 载入模型
-model = load_model(model_restore)
-print('Model Restore!')
-# # 评估模型
-# loss,accuracy = model.evaluate(x_test,y_test)
-#
-# print('\ntest loss',loss)
-# print('accuracy',accuracy)
-
+# model = load_model(model_restore)
+# print('Model Restore!')
 
 # 开始训练和测试
 print('Training ------------')
-model.fit(x_train, y_train, batch_size=batch, epochs=num_epoch, validation_data=(x_test, y_test), callbacks=[history])
+hist_log = model.fit(x_train, y_train, batch_size=batch, epochs=num_epoch, validation_data=(x_test, y_test),
+                     callbacks=[history])
+with open(log, 'w') as f:
+    f.write(str(hist_log.history))
+
+# 评估模型
 print('\nTesting ------------')
 loss, accuracy = model.evaluate(x_test, y_test)
-print('\ntest loss: ', loss)
-print('\ntest accuracy: ', accuracy)
+print('\ntest loss', loss)
+print('accuracy', accuracy)
+
+# 保存模型
 model.save(model_save_path)
 
 # 绘制acc-loss曲线
 history.loss_plot('epoch')
 
+# 运行时间
 endtime = datetime.datetime.now()
 print('usetime | ', endtime - starttime)
