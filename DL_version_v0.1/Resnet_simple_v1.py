@@ -4,7 +4,7 @@
 # @Site    : 
 # @File    : Resnet_simple_v1.py
 # @Software: PyCharm Community Edition
-# @Function: define 3-ways input, InceptionV3 resnet blocks
+# @Function: define 3-ways input, InceptionV3 resnet blocks without 5x5branches,
 # @update:
 
 import keras
@@ -55,9 +55,9 @@ class Resnet_v1(object):
         x1 = x[:, slide:, :, :]
         return x1
 
-    def Input_Conv(self, x):
+    def Input_Conv_1(self, x):
         """
-        Copy the weights and do Conv
+        Copy 3 same weights to do Conv
         :param x: Input
         :return: x
         """
@@ -83,6 +83,25 @@ class Resnet_v1(object):
         x = Conv2D(filters=192, kernel_size=1, padding="same",
                         data_format="channels_first", use_bias=False, kernel_regularizer=l2(self.l2_reg),
                    name='input_conv2-1')(x)
+
+        x = Activation("relu",name='input_relu1')(x)
+        return x
+
+    def Input_Conv_2(self, x):
+        """
+        Pure ResNet start input
+        :param x: Input
+        :return: x
+        """
+
+        x = BatchNormalization(axis=1, name="input_batchnorm1-1")(x)
+        x = Conv2D(filters=64, kernel_size=3, padding="same",
+                    data_format="channels_first", use_bias=False, kernel_regularizer=l2(self.l2_reg),
+                    name='input_conv1-1')(x)
+        x = BatchNormalization(axis=1,name='input_batchnorm1-2')(x)
+        x = Conv2D(filters=64, kernel_size=3, padding="same",
+                    data_format="channels_first", use_bias=False, kernel_regularizer=l2(self.l2_reg),
+                    name='input_conv1-2')(x)
 
         x = Activation("relu",name='input_relu1')(x)
         return x
@@ -138,20 +157,22 @@ class Resnet_v1(object):
         Builds the full Keras model and stores it in self.model.
         """
         in_x = x = Input((1, 19, 19))
+        x = self.Input_Conv_1(x)
         for i in range(20):
             x = self.Inception_blocks(x, 64, i+1)
         x = AveragePooling2D(pool_size=(7, 7))(x)
+        x = Dropout(0.5, name='dropout-1')(x)
         x = Flatten()(x)
         # x = Dense(1024, activation='softmax')(x)
         x = Dense(34, activation='softmax')(x)
         model = Model(inputs=in_x, outputs=x)
-        model.summary()
+        # model.summary()
 
         # x_test = np.array([[[1,2],[2,3],[3,4],[4,5]]])
         # print (model.predict(x_test))
-        plot_model(model, to_file='Resnet_simple_v1.png', show_shapes=True)
+        # plot_model(model, to_file='Resnet_simple_v1.png', show_shapes=True)
         return model
 
-
-a = Resnet_v1()
-model=a.build()
+#
+# a = Resnet_v1()
+# model=a.build()
